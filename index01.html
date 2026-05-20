@@ -1,0 +1,371 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reading Calendar</title>
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f0f4f8;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* The Main White Box: Traps content inside */
+        .calendar-container {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            max-width: 1000px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        h1 { margin: 0; font-size: 24px; color: #2c3e50; }
+        .nav-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .nav-btn:hover { background: #2980b9; }
+        
+        /* Quick Set Tool Box */
+        .bulk-updater {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+        .bulk-updater h3 { margin: 0; font-size: 14px; color: #64748b; width: 100%; }
+        .bulk-input-group { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+        .bulk-input-group input { width: 55px; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; text-align: center; }
+        .bulk-input-group select { padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; }
+        .bulk-btn { background: #10b981; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .bulk-btn:hover { background: #059669; }
+
+        /* Grid Header Setup */
+        .grid-header {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            font-weight: bold;
+            color: #7f8c8d;
+            margin-bottom: 10px;
+        }
+        
+        /* 7-column grid layout */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 8px;
+            width: 100%;
+        }
+        
+        /* Day Card base styles */
+        .day-card {
+            background: #fdfdfd;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 6px;
+            min-height: 125px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+        
+        /* Dynamic Red/Green background color steps */
+        .day-card.status-none { background: #fdfdfd; border-color: #e2e8f0; }
+        .day-card.status-red-high { background: #fee2e2; border-color: #fca5a5; } 
+        .day-card.status-red-low { background: #fef2f2; border-color: #fecaca; }  
+        .day-card.status-green-low { background: #f0fdf4; border-color: #bbf7d0; } 
+        .day-card.status-green-high { background: #dcfce7; border-color: #86efac; } 
+
+        .day-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2px;
+        }
+        .day-number {
+            font-weight: bold;
+            color: #7f8c8d;
+            font-size: 13px;
+        }
+        
+        /* Page Number Quick Box */
+        .page-box {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            font-size: 10px;
+            color: #64748b;
+        }
+        .page-input {
+            width: 35px;
+            border: 1px solid #cbd5e1;
+            border-radius: 3px;
+            padding: 1px 2px;
+            font-size: 10px;
+            text-align: center;
+        }
+
+        .tracker-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #f1f5f9;
+            padding: 4px 4px;
+            border-radius: 4px;
+            margin-top: 3px;
+            font-size: 11px;
+        }
+        .tracker-row.goal { background: #e0f2fe; color: #0369a1; }
+        .tracker-row.done { background: #e2e8f0; color: #334155; }
+        
+        /* Text overrides when parent card turns green or red */
+        .status-red-high .tracker-row.done, .status-red-low .tracker-row.done { background: #ffffff; color: #991b1b; }
+        .status-green-high .tracker-row.done, .status-green-low .tracker-row.done { background: #ffffff; color: #166534; }
+
+        .label-text { font-weight: 600; }
+        
+        .clicker-box {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+        .val-display {
+            font-weight: bold;
+            min-width: 24px;
+            text-align: center;
+        }
+        .arrow-btn {
+            background: white;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .arrow-btn:hover { background: #e2e8f0; }
+        
+        .empty-day {
+            background: #f8fafc;
+            border: 1px dashed #cbd5e1;
+            opacity: 0.5;
+        }
+</style>
+</head>
+<body>
+
+<div class="calendar-container">
+    <div class="header">
+        <button class="nav-btn" onclick="changeMonth(-1)">Prev</button>
+        <h1 id="month-year-title">Month Year</h1>
+        <button class="nav-btn" onclick="changeMonth(1)">Next</button>
+    </div>
+
+    <!-- Quick Set Range Tool Box -->
+    <div class="bulk-updater">
+        <h3>Quick Set Multiple Days</h3>
+        <div class="bulk-input-group">
+            <label>From Day:</label>
+            <input type="number" id="bulk-start" min="1" max="31" value="5">
+        </div>
+        <div class="bulk-input-group">
+            <label>To Day:</label>
+            <input type="number" id="bulk-end" min="1" max="31" value="10">
+        </div>
+        <div class="bulk-input-group">
+            <select id="bulk-type">
+                <option value="goal">Goal</option>
+                <option value="done">Done</option>
+            </select>
+        </div>
+        <div class="bulk-input-group">
+            <label>Minutes:</label>
+            <input type="number" id="bulk-value" min="0" value="30">
+        </div>
+        <button class="bulk-btn" onclick="applyBulkUpdate()">Apply to Range</button>
+    </div>
+
+    <div class="grid-header">
+        <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+    </div>
+
+    <div class="calendar-grid" id="calendar-days"></div>
+</div>
+
+<script>
+    let currentDate = new Date();
+    // Structure holds: {'YYYY-MM-DD': {goal: 30, done: 15, page: 42}}
+    let trackerData = JSON.parse(localStorage.getItem('bookCalendarData')) || {};
+
+    const monthNames = ["January", "February", "March", "April", "May", "June", 
+                        "July", "August", "September", "October", "November", "December"];
+
+    function getColorClass(goal, done) {
+        if (goal === 0 && done === 0) return 'status-none';
+        
+        if (done < goal) {
+            let deficit = goal - done;
+            let ratio = deficit / goal;
+            return ratio > 0.5 ? 'status-red-high' : 'status-red-low'; 
+        } else {
+            if (goal === 0 && done > 0) return 'status-green-high';
+            let extra = done - goal;
+            let ratio = extra / goal;
+            return ratio >= 0.5 ? 'status-green-high' : 'status-green-low'; 
+        }
+    }
+
+    function renderCalendar() {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+
+        document.getElementById('month-year-title').innerText = `${monthNames[month]} ${year}`;
+
+        const firstDayIndex = new Date(year, month, 1).getDay();
+        const totalDays = new Date(year, month + 1, 0).getDate();
+        
+        const grid = document.getElementById('calendar-days');
+        grid.innerHTML = '';
+
+        for (let i = 0; i < firstDayIndex; i++) {
+            const emptyCell = document.createElement('div');
+            emptyCell.classList.add('day-card', 'empty-day');
+            grid.appendChild(emptyCell);
+        }
+
+        for (let day = 1; day <= totalDays; day++) {
+            const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            
+            if (!trackerData[dateKey]) {
+                trackerData[dateKey] = { goal: 0, done: 0, page: '' };
+            }
+            if (trackerData[dateKey].page === undefined) {
+                trackerData[dateKey].page = '';
+            }
+
+            const dayCard = document.createElement('div');
+            dayCard.id = `card-${dateKey}`;
+            
+            const colorClass = getColorClass(trackerData[dateKey].goal, trackerData[dateKey].done);
+            dayCard.className = `day-card ${colorClass}`;
+
+            dayCard.innerHTML = `
+                <div class="day-top">
+                    <div class="day-number">${day}</div>
+                    <div class="page-box">
+                        <label>Pg:</label>
+                        <input type="text" class="page-input" id="page-${dateKey}" value="${trackerData[dateKey].page}" oninput="updatePage('${dateKey}', this.value)">
+                    </div>
+                </div>
+                
+                <div class="tracker-row goal">
+                    <span class="label-text">Goal</span>
+                    <div class="clicker-box">
+                        <div class="arrow-btn" onclick="updateValue('${dateKey}', 'goal', -5)">▼</div>
+                        <span class="val-display" id="goal-${dateKey}">${trackerData[dateKey].goal}m</span>
+                        <div class="arrow-btn" onclick="updateValue('${dateKey}', 'goal', 5)">▲</div>
+                    </div>
+                </div>
+
+                <div class="tracker-row done">
+                    <span class="label-text">Done</span>
+                    <div class="clicker-box">
+                        <div class="arrow-btn" onclick="updateValue('${dateKey}', 'done', -5)">▼</div>
+                        <span class="val-display" id="done-${dateKey}">${trackerData[dateKey].done}m</span>
+                        <div class="arrow-btn" onclick="updateValue('${dateKey}', 'done', 5)">▲</div>
+                    </div>
+                </div>
+            `;
+            grid.appendChild(dayCard);
+        }
+    }
+
+    function updateValue(dateKey, field, amount) {
+        let currentVal = trackerData[dateKey][field];
+        let newVal = Math.max(0, currentVal + amount);
+        
+        trackerData[dateKey][field] = newVal;
+        localStorage.setItem('bookCalendarData', JSON.stringify(trackerData));
+        
+        document.getElementById(`${field}-${dateKey}`).innerText = `${newVal}m`;
+        
+        const card = document.getElementById(`card-${dateKey}`);
+        card.className = 'day-card ' + getColorClass(trackerData[dateKey].goal, trackerData[dateKey].done);
+    }
+
+    // New Function: Saves page number entries to local system storage immediately
+    function updatePage(dateKey, value) {
+        trackerData[dateKey].page = value;
+        localStorage.setItem('bookCalendarData', JSON.stringify(trackerData));
+    }
+
+    function applyBulkUpdate() {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        
+        const startDay = parseInt(document.getElementById('bulk-start').value);
+        const endDay = parseInt(document.getElementById('bulk-end').value);
+        const type = document.getElementById('bulk-type').value;
+        const val = Math.max(0, parseInt(document.getElementById('bulk-value').value) || 0);
+
+        if (isNaN(startDay) || isNaN(endDay) || startDay > endDay) {
+            alert("Please enter a valid range of days.");
+            return;
+        }
+
+        for (let d = startDay; d <= endDay; d++) {
+            const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            if (!trackerData[dateKey]) {
+                trackerData[dateKey] = { goal: 0, done: 0, page: '' };
+            }
+            trackerData[dateKey][type] = val;
+        }
+
+        localStorage.setItem('bookCalendarData', JSON.stringify(trackerData));
+        renderCalendar();
+    }
+
+    function changeMonth(direction) {
+        currentDate.setMonth(currentDate.getMonth() + direction);
+        renderCalendar();
+    }
+
+    renderCalendar();
+</script>
+
+</body>
+</html>
